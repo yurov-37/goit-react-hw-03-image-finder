@@ -2,9 +2,11 @@ import React, { Component } from 'react';
 import { ToastContainer } from 'react-toastify';
 import { toast } from 'react-toastify';
 import GlobalStyles from './GlobalStyles';
-import Searchbar from './Searchbar/Searchbar';
-import ImageGallery from './ImageGallery/ImageGallery';
-import Modal from './Modal/Modal';
+import Searchbar from './Searchbar';
+import ImageGallery from './ImageGallery';
+import Modal from './Modal';
+import Button from './Button';
+import Notification from './Notification';
 import 'react-toastify/dist/ReactToastify.css';
 import * as API from './services/api';
 import { SearchApp } from './App.styled';
@@ -14,7 +16,8 @@ import { ThreeDots } from 'react-loader-spinner';
 export default class App extends Component {
   state = {
     searchQuery: '',
-    imagesData: [],
+    images: [],
+    page: 1,
     isLoading: false,
     largeImgLink: null,
     imgAlt: null,
@@ -23,16 +26,16 @@ export default class App extends Component {
     error: null,
   };
 
-  async componentDidUpdate(prevProps, prevState) {
-    const { searchQuery } = this.state;
+  async componentDidUpdate(_, prevState) {
+    const { searchQuery, page } = this.state;
 
     if (prevState.searchQuery !== searchQuery) {
       this.setState({ isLoading: true });
       try {
-        const response = await API.fetchImagesWithQuery(searchQuery);
+        const response = await API.fetchImagesWithQuery(searchQuery, page);
         const { hits, total } = response.data;
         if (hits.length === 0) {
-          toast.error('По вашему запросу ничего не найдено', {
+          toast.error('Nothing found for your requestо', {
             icon: '👻',
           });
           return;
@@ -46,8 +49,8 @@ export default class App extends Component {
           };
         });
         this.setState({
-          imagesData,
           searchQuery,
+          images: imagesData,
           totalImages: total,
           imgOnRequest: hits.length,
         });
@@ -57,10 +60,34 @@ export default class App extends Component {
         this.setState({ isLoading: false });
       }
     }
+
+    if (prevState.page !== page && page !== 1) {
+      this.setState({ isLoading: true });
+      try {
+        const response = await API.fetchImagesWithQuery(searchQuery, page);
+        const { hits } = response.data;
+        const imagesData = hits.map(image => {
+          return {
+            id: image.id,
+            webformatURL: image.webformatURL,
+            largeImageURL: image.largeImageURL,
+            tags: image.tags,
+          };
+        });
+        this.setState(({ images, imgOnRequest }) => ({
+          images: [...images, ...imagesData],
+          imgOnRequest: imgOnRequest + imagesData.length,
+        }));
+      } catch (error) {
+        this.setState({ error });
+      } finally {
+        this.setState({ isLoading: false });
+      }
+    }
   }
 
   getSearchName = searchQuery => {
-    this.setState({ searchQuery });
+    this.setState({ searchQuery, page: 1, imgOnRequest: 0, images: [] });
   };
 
   onImageClick = event => {
@@ -75,16 +102,27 @@ export default class App extends Component {
     this.setState({ largeImgLink: null, imgAlt: null });
   };
 
+  onLoadMoreClick = () => {
+    this.setState(prevState => ({
+      page: prevState.page + 1,
+    }));
+  };
+
   render() {
-    const { imagesData, imgAlt, largeImgLink, isLoading } = this.state;
+    const {
+      images,
+      imgAlt,
+      largeImgLink,
+      isLoading,
+      imgOnRequest,
+      totalImages,
+    } = this.state;
     return (
       <SearchApp>
         <Searchbar onSubmit={this.getSearchName} />
-
-        {imagesData.length > 0 && (
-          <ImageGallery items={imagesData} onImgClick={this.onImageClick} />
+        {images.length > 0 && (
+          <ImageGallery items={images} onImgClick={this.onImageClick} />
         )}
-        {isLoading && <ThreeDots />}
         {largeImgLink && (
           <Modal
             alt={imgAlt}
@@ -92,7 +130,13 @@ export default class App extends Component {
             closeModal={this.onCloseModal}
           />
         )}
-
+        {imgOnRequest >= 12 && imgOnRequest < totalImages && !isLoading && (
+          <Button onClick={this.onLoadMoreClick} />
+        )}
+        {isLoading && <ThreeDots color="#3f51b5" />}
+        {imgOnRequest > 1 && imgOnRequest === totalImages && (
+          <Notification>Nothing else for your request...</Notification>
+        )}
         <ToastContainer autoClose={2000} />
         <GlobalStyles />
       </SearchApp>

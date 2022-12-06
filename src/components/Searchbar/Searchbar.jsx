@@ -26,7 +26,7 @@ export default class Searchbar extends Component {
     const { searchQuery } = this.state;
     event.preventDefault();
     if (searchQuery.trim() === '') {
-      toast.error('Поле для запроса пустое', {
+      toast.error('Request field is empty', {
         icon: '☣️',
       });
       return;

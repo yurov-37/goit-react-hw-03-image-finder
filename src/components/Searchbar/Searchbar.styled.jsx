@@ -1,6 +1,7 @@
 import styled from '@emotion/styled';
 
 export const Header = styled.header`
+  width: 100%;
   top: 0;
   left: 0;
   position: sticky;
@@ -13,6 +14,7 @@ export const Header = styled.header`
   padding-left: 24px;
   padding-top: 12px;
   padding-bottom: 12px;
+  margin-bottom: 20px;
   color: #fff;
   background-color: #3f51b5;
   box-shadow: 0px 2px 4px -1px rgba(0, 0, 0, 0.2),
